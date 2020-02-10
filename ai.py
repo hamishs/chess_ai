@@ -1,5 +1,5 @@
 #chess ai class
-import chess, numpy as np
+import chess, numpy as np, random
 
 class ValueFunction:
     #material score
@@ -102,7 +102,85 @@ class ValueFunction:
                     score_black += ValueFunction.material_scores[str.upper(x)]
                     col += 1
         return score_white - score_black
-        
+
+class MCTS:
+    @staticmethod
+    def search_node(board):
+        '''
+        run one simulation of game from root (board position)
+        with random choice of legal moves
+        '''
+
+        board_clone = board.copy()
+
+        while True:
+            if (board_clone.is_game_over()):
+                return board_clone.result()
+                break
+            legal_moves = [move for move in board_clone.legal_moves]
+            move = random.choice(legal_moves)
+            board_clone.push(move)
+
+    @staticmethod
+    def UCT(node_wins, node_sims, total_sims, exp_param):
+        '''
+        compute UCT formula for a node
+        '''
+        if (node_sims == 0):
+            return 9999999
+        else:
+            return (node_wins/node_sims) + exp_param * math.sqrt(math.log(total_sims)/node_sims)
+
+
+    @staticmethod
+    def MCTS(board, max_sims):
+        '''
+        implement the MCTS algo on board using 1 depth of UCT based search
+        '''
+
+        #find initial moves
+        legal_moves = [move for move in board.legal_moves]
+        move_count = len(legal_moves)
+
+        #initialize search results lists
+        node_wins = [0 for move in legal_moves]
+        node_losses = [0 for move in legal_moves]
+        node_sims = [0 for move in legal_moves]
+        total_sims = 0
+        exp_param = math.sqrt(2)
+        move_UCT = [0 for move in legal_moves]
+
+        while (total_sims < max_sims):
+            #calcaulte UCT for each move
+            for i in range(0, move_count):
+                move_UCT[i] = UCT(node_wins[i], node_sims[i], total_sims, exp_param)
+
+            #select move with max UCT
+            i_max = move_UCT.index(max(move_UCT))
+            move = legal_moves[i_max]
+
+            print(move)
+            board_clone = board.copy()
+            board_clone.push(move)
+            result = search_node(board_clone)
+            print(result)
+            if (result == '1-0'):
+                node_wins[i_max] += 1
+            elif (result == '0-1'):
+                node_losses[i_max] += 1
+
+            node_sims[i_max] += 1
+            total_sims += 1
+
+        #find move with best probability of win
+        # currently use p = wins / simulations
+        node_win_pct = [i/j for i, j in zip(node_wins, node_sims)]
+        move = legal_moves[node_win_pct.index(max(node_win_pct))]
+
+        print(node_sims)
+        print(node_win_pct)
+
+        return move
 
 class AI:
 
